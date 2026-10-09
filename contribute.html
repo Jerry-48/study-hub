@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add notes | ICT Sem 1 Study Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-in">
+      <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">ICT</span><span class="brand-text">Sem 1 Study Hub</span></a>
+      <a class="btn btn-sm btn-ghost" href="index.html">Back to notes</a>
+      <button class="btn btn-sm btn-ghost" id="logout" hidden>Log out</button>
+    </div>
+  </header>
+
+  <main class="wrap narrow">
+    <h1 class="page-h">Add notes</h1>
+    <p class="lead" id="intro">Share your notes with other students. We email you a password that works for 20 minutes, so we know the email is yours. Your PDF goes live after an admin approves it.</p>
+    <p class="notice" id="setupMsg" hidden>The upload service is not connected yet. Paste your Apps Script URL in config.js.</p>
+    <p class="msg" id="msg" role="status" aria-live="polite" hidden></p>
+
+    <!-- Login -->
+    <section class="panel" id="authBox">
+      <div class="seg" role="tablist">
+        <button class="seg-b on" data-mode="user" role="tab">Contributor</button>
+        <button class="seg-b" data-mode="owner" role="tab">Owner login</button>
+      </div>
+
+      <form id="userForm" class="stack">
+        <div id="step1" class="stack">
+          <label>Your name<input id="name" autocomplete="name" required minlength="2" /></label>
+          <label>Email<input id="email" type="email" autocomplete="email" required /></label>
+          <button class="btn btn-ink" type="submit" id="sendBtn">Email me a password</button>
+          <p class="hint">Already have a password? <button type="button" class="link" id="haveBtn">Enter it here</button></p>
+        </div>
+        <div id="step2" class="stack" hidden>
+          <p class="hint" id="sentNote"></p>
+          <label>Password from your email<input id="pw" autocomplete="one-time-code" required /></label>
+          <button class="btn btn-ink" type="button" id="loginBtn">Log in</button>
+          <p class="hint"><button type="button" class="link" id="backBtn">Use a different email</button></p>
+        </div>
+      </form>
+
+      <form id="ownerForm" class="stack" hidden>
+        <label>Owner email<input id="oEmail" type="email" required /></label>
+        <label>Owner password<input id="oPw" type="password" autocomplete="current-password" required /></label>
+        <button class="btn btn-ink" type="submit">Log in as owner</button>
+      </form>
+    </section>
+
+    <!-- Dashboard -->
+    <section id="dash" hidden>
+      <p class="who" id="who"></p>
+      <div class="tabs" id="tabs" role="tablist"></div>
+
+      <div class="panel" id="tab-upload">
+        <form id="upForm" class="stack">
+          <label>Title<input id="upTitle" required minlength="3" maxlength="80" placeholder="e.g. Vector chapter notes" /></label>
+          <label>Subject
+            <select id="upSubject" required>
+              <option>Modern Physics</option><option>Maths</option><option>Communication Skills in English</option>
+              <option>Fundamentals of Electronics</option><option>Web Development</option><option>Mid-exam papers</option>
+            </select>
+          </label>
+          <label>PDF file (max 10 MB)<input id="upFile" type="file" accept="application/pdf" required /></label>
+          <button class="btn btn-ink" type="submit" id="upBtn">Upload PDF</button>
+        </form>
+      </div>
+
+      <div class="panel" id="tab-notes" hidden><ul class="rows" id="noteList"></ul></div>
+
+      <div class="panel" id="tab-team" hidden>
+        <form id="teamForm" class="inline">
+          <input id="tEmail" type="email" placeholder="Email address" required aria-label="Email address" />
+          <select id="tRole" aria-label="Role"><option value="worker">Worker</option><option value="admin">Admin</option></select>
+          <button class="btn btn-ink" type="submit">Add</button>
+        </form>
+        <p class="hint">Workers can upload (goes live at once) and delete. Admins can also approve or reject uploads.</p>
+        <ul class="rows" id="teamList"></ul>
+      </div>
+    </section>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="contribute.js"></script>
+</body>
+</html>
