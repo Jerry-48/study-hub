@@ -1,7 +1,7 @@
 /**
  * ICT Notes backend (Google Apps Script) - bind this to your Google Sheet.
  * Before first use: Project Settings > Script properties, add:
- *   OWNER_EMAIL, OWNER_PASSWORD (long & private), FOLDER_ID (Drive folder for uploads)
+ *   OWNER_EMAIL, OWNER_PASSWORD (long & private), FOLDER_ID (default Drive folder)
  * Then run setup() once, and Deploy > New deployment > Web app (Execute as: Me, Access: Anyone).
  */
 const PW_MINUTES = 20, SESSION_HOURS = 2, MAX_MB = 10, DAILY_MAILS = 90;
@@ -9,11 +9,21 @@ const SHEETS = {
   Users:    ['email', 'name', 'hash', 'salt', 'expires', 'lastRequest', 'attempts'],
   Sessions: ['token', 'email', 'name', 'role', 'expires'],
   Roles:    ['email', 'role', 'addedAt'],
-  Notes:    ['id', 'title', 'subject', 'fileId', 'url', 'email', 'name', 'status', 'createdAt']
+  Notes:    ['id', 'title', 'folder', 'fileId', 'url', 'email', 'name', 'status', 'createdAt'],
+  Folders:  ['id', 'name', 'group', 'driveFolderId', 'createdAt']
 };
 const P = PropertiesService.getScriptProperties();
 
-function setup() { Object.keys(SHEETS).forEach(sheet); }
+// Same ids as the cards on the site. driveFolderId empty = use FOLDER_ID. Paste your existing Drive folder ID in the Folders tab to save into it.
+const DEFAULT_FOLDERS = [['physics', 'Modern Physics', 'notes'], ['maths', 'Maths', 'notes'], ['english', 'Communication Skills in English', 'notes'],
+  ['electronics', 'Fundamentals of Electronics', 'notes'], ['webdev', 'Web Development', 'notes'], ['pyq', 'GTU PYQ with solutions', 'papers'],
+  ['p-physics', 'Modern Physics', 'papers'], ['p-english', 'English', 'papers'], ['p-maths', 'Maths', 'papers'], ['p-foe', 'Fundamental Electronics', 'papers']];
+function setup() {
+  Object.keys(SHEETS).forEach(sheet);
+  const f = sheet('Folders');
+  if (f.getLastRow() < 2) DEFAULT_FOLDERS.forEach(d => f.appendRow([d[0], d[1], d[2], '', new Date().toISOString()]));
+}
+const idFrom = s => (String(s || '').match(/[-\w]{25,}/) || [''])[0];
 function sheet(name) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let s = ss.getSheetByName(name);
@@ -38,10 +48,10 @@ const fail = msg => { throw new Error(msg); };
 
 function out(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 
-function doGet() { // public list of approved notes
-  const notes = table('Notes').rows.filter(n => n.status === 'approved')
-    .map(n => ({ title: n.title, subject: n.subject, url: n.url, by: n.name }));
-  return out({ ok: true, notes });
+function doGet() { // public: folders + approved notes (no uploader details)
+  const folders = table('Folders').rows.map(r => ({ id: r.id, name: r.name, group: r.group }));
+  const notes = table('Notes').rows.filter(n => n.status === 'approved').map(n => ({ title: n.title, folder: n.folder, url: n.url }));
+  return out({ ok: true, folders, notes });
 }
 
 function doPost(e) {
@@ -115,20 +125,24 @@ function share(id, on) {
   f.setSharing(on ? DriveApp.Access.ANYONE_WITH_LINK : DriveApp.Access.PRIVATE, DriveApp.Permission.VIEW);
 }
 function upload(b) {
-  const me = auth(b), title = String(b.title || '').trim().slice(0, 80), subject = String(b.subject || '').slice(0, 60);
+  const me = auth(b), title = String(b.title || '').trim().slice(0, 80);
+  const folder = table('Folders').rows.find(r => r.id === b.folder) || fail('Pick a folder.');
   if (title.length < 3) fail('Give the note a title.');
   const bytes = Utilities.base64Decode(b.data || '');
   if (bytes.length > MAX_MB * 1048576) fail('File is bigger than ' + MAX_MB + ' MB.');
   if (!(bytes[0] === 37 && bytes[1] === 80 && bytes[2] === 68 && bytes[3] === 70)) fail('Only PDF files are allowed.');
-  const file = DriveApp.getFolderById(P.getProperty('FOLDER_ID')).createFile(Utilities.newBlob(bytes, 'application/pdf', title + '.pdf'));
+  const parent = DriveApp.getFolderById(folder.driveFolderId || P.getProperty('FOLDER_ID')); // the existing folder, no new folder
+  const file = parent.createFile(Utilities.newBlob(bytes, 'application/pdf', title + '.pdf'));
   const status = STAFF.indexOf(me.role) >= 0 ? 'approved' : 'pending';
   if (status === 'approved') share(file.getId(), true);
-  add('Notes', { id: rand(10, 'abcdefghijklmnopqrstuvwxyz0123456789'), title, subject, fileId: file.getId(), url: file.getUrl(), email: me.email, name: me.name, status, createdAt: new Date().toISOString() });
+  add('Notes', { id: rand(10, 'abcdefghijklmnopqrstuvwxyz0123456789'), title, folder: folder.id, fileId: file.getId(), url: file.getUrl(), email: me.email, name: me.name, status, createdAt: new Date().toISOString() });
   return { status };
 }
 function listNotes(b) {
-  const me = auth(b), rows = table('Notes').rows.filter(n => n.status !== 'deleted' && n.status !== 'rejected');
-  const pick = n => ({ id: n.id, title: n.title, subject: n.subject, url: n.url, by: n.name, email: n.email, status: n.status });
+  const me = auth(b), fm = {};
+  table('Folders').rows.forEach(r => fm[r.id] = (r.group === 'papers' ? 'Papers: ' : '') + r.name);
+  const rows = table('Notes').rows.filter(n => n.status !== 'deleted' && n.status !== 'rejected');
+  const pick = n => ({ id: n.id, title: n.title, folder: fm[n.folder] || '', url: n.url, status: n.status });
   if (REVIEW.indexOf(me.role) >= 0) return rows.map(pick);
   if (me.role === 'worker') return rows.filter(n => n.status === 'approved' || n.email === me.email).map(pick);
   return rows.filter(n => n.email === me.email).map(pick);
@@ -148,6 +162,19 @@ function removeNote(b) {
   DriveApp.getFileById(n.fileId).setTrashed(true); put(t, n._row, 'status', 'deleted'); return {};
 }
 
+/* ---------- new folder: only on purpose, admin/owner ---------- */
+function createFolder(b) {
+  auth(b, REVIEW);
+  const name = String(b.name || '').trim().slice(0, 60), group = b.group === 'papers' ? 'papers' : 'notes';
+  if (name.length < 2) fail('Give the folder a name.');
+  if (table('Folders').rows.some(r => r.group === group && String(r.name).toLowerCase() === name.toLowerCase())) fail('This folder already exists.');
+  let driveId = idFrom(b.drive);
+  if (driveId) { try { DriveApp.getFolderById(driveId); } catch (e) { fail('Cannot open that Drive folder. Check the link.'); } }
+  else driveId = DriveApp.getFolderById(P.getProperty('FOLDER_ID')).createFolder(name).getId();
+  add('Folders', { id: rand(8, 'abcdefghijklmnopqrstuvwxyz0123456789'), name, group, driveFolderId: driveId, createdAt: new Date().toISOString() });
+  return {};
+}
+
 /* ---------- team (owner only) ---------- */
 function listTeam(b) { auth(b, ['owner']); return table('Roles').rows.map(r => ({ email: r.email, role: r.role })); }
 function setRole(b) {
@@ -160,4 +187,4 @@ function setRole(b) {
   return {};
 }
 
-const ACTIONS = { requestPassword, login, ownerLogin, upload, listNotes, review, removeNote, listTeam, setRole };
+const ACTIONS = { requestPassword, login, ownerLogin, upload, listNotes, review, removeNote, createFolder, listTeam, setRole };

@@ -1,1 +1,1 @@
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZr6LisZB6LhcWljFPMU_cGX3DyasrfKKYEaa-7RditOF79X6NhMJOirOmDD5aF5mp_A/exec"; // paste your Web app URL here after deploying
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbym7gXqAZYmA20jYINcNLQvvz149oVdXGV_fxIdS9AfElCbkTPqrsMRkG4yKduqkSz_YQ/exec"; // paste your Web app URL here after deploying

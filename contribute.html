@@ -1,86 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Add notes | ICT Sem 1 Study Hub</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap"
+    rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <header class="topbar">
     <div class="wrap topbar-in">
-      <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">ICT</span><span class="brand-text">Sem 1 Study Hub</span></a>
+      <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">ICT</span><span
+          class="brand-text">Sem 1 Study Hub</span></a>
       <a class="btn btn-sm btn-ghost" href="index.html">Back to notes</a>
       <button class="btn btn-sm btn-ghost" id="logout" hidden>Log out</button>
     </div>
   </header>
 
   <main class="wrap narrow">
-    <h1 class="page-h">Add notes</h1>
-    <p class="lead" id="intro">Share your notes with other students. We email you a password that works for 20 minutes, so we know the email is yours. Your PDF goes live after an admin approves it.</p>
-    <p class="notice" id="setupMsg" hidden>The upload service is not connected yet. Paste your Apps Script URL in config.js.</p>
+    <h1 class="page-h">Add your notes</h1>
+    <p class="lead" id="intro">Share a PDF with other students in 3 easy steps. An admin checks it, then it goes live on
+      the site.</p>
+    <ol class="steps" id="steps">
+      <li class="on">Your email</li>
+      <li>Password</li>
+      <li>Upload</li>
+    </ol>
+    <p class="notice" id="setupMsg" hidden>The upload service is not connected yet. Deploy the Apps Script and paste its
+      URL in config.js.</p>
     <p class="msg" id="msg" role="status" aria-live="polite" hidden></p>
 
-    <!-- Login -->
-    <section class="panel" id="authBox">
-      <div class="seg" role="tablist">
-        <button class="seg-b on" data-mode="user" role="tab">Contributor</button>
-        <button class="seg-b" data-mode="owner" role="tab">Owner login</button>
-      </div>
-
-      <form id="userForm" class="stack">
-        <div id="step1" class="stack">
-          <label>Your name<input id="name" autocomplete="name" required minlength="2" /></label>
-          <label>Email<input id="email" type="email" autocomplete="email" required /></label>
-          <button class="btn btn-ink" type="submit" id="sendBtn">Email me a password</button>
-          <p class="hint">Already have a password? <button type="button" class="link" id="haveBtn">Enter it here</button></p>
-        </div>
-        <div id="step2" class="stack" hidden>
-          <p class="hint" id="sentNote"></p>
-          <label>Password from your email<input id="pw" autocomplete="one-time-code" required /></label>
-          <button class="btn btn-ink" type="button" id="loginBtn">Log in</button>
-          <p class="hint"><button type="button" class="link" id="backBtn">Use a different email</button></p>
-        </div>
-      </form>
-
-      <form id="ownerForm" class="stack" hidden>
-        <label>Owner email<input id="oEmail" type="email" required /></label>
-        <label>Owner password<input id="oPw" type="password" autocomplete="current-password" required /></label>
-        <button class="btn btn-ink" type="submit">Log in as owner</button>
+    <!-- Step 1 -->
+    <section class="panel" id="s1">
+      <form id="f1" class="stack">
+        <label>Your name<input id="name" autocomplete="name" required minlength="2" /></label>
+        <label>Your email<input id="email" type="email" autocomplete="email" inputmode="email" required /></label>
+        <button class="btn btn-ink" type="submit" id="sendBtn">Email me a password</button>
+        <p class="hint">We send a password to this email. It works for 20 minutes. <button type="button" class="link"
+            id="haveBtn">I already have one</button></p>
       </form>
     </section>
 
-    <!-- Dashboard -->
+    <!-- Step 2 -->
+    <section class="panel" id="s2" hidden>
+      <form id="f2" class="stack">
+        <p class="hint" id="sentNote"></p>
+        <label>Password from your email<input id="pw" autocomplete="one-time-code" autocapitalize="off"
+            required /></label>
+        <p class="timer" id="timer"></p>
+        <button class="btn btn-ink" type="submit" id="loginBtn">Continue</button>
+        <p class="hint">Not in your inbox? Check spam. <button type="button" class="link" id="resendBtn">Send a new
+            password</button> or <button type="button" class="link" id="backBtn">change email</button></p>
+      </form>
+    </section>
+
+    <!-- Owner -->
+    <section class="panel" id="ownerBox" hidden>
+      <form id="fo" class="stack">
+        <label>Owner email<input id="oEmail" type="email" required /></label>
+        <label>Owner password<input id="oPw" type="password" autocomplete="current-password" required /></label>
+        <button class="btn btn-ink" type="submit" id="oBtn">Log in as owner</button>
+        <p class="hint"><button type="button" class="link" id="ownerBack">Back</button></p>
+      </form>
+    </section>
+    <p class="foot-link" id="footLink"><button type="button" class="link" id="ownerLink">Owner login</button></p>
+
+    <!-- Step 3 -->
     <section id="dash" hidden>
       <p class="who" id="who"></p>
       <div class="tabs" id="tabs" role="tablist"></div>
 
       <div class="panel" id="tab-upload">
         <form id="upForm" class="stack">
-          <label>Title<input id="upTitle" required minlength="3" maxlength="80" placeholder="e.g. Vector chapter notes" /></label>
-          <label>Subject
-            <select id="upSubject" required>
-              <option>Modern Physics</option><option>Maths</option><option>Communication Skills in English</option>
-              <option>Fundamentals of Electronics</option><option>Web Development</option><option>Mid-exam papers</option>
+          <label>Which folder?
+            <select id="upFolder" required>
+              <option value="">Loading folders...</option>
             </select>
           </label>
-          <label>PDF file (max 10 MB)<input id="upFile" type="file" accept="application/pdf" required /></label>
-          <button class="btn btn-ink" type="submit" id="upBtn">Upload PDF</button>
+          <label class="drop" id="drop">
+            <input type="file" id="upFile" accept="application/pdf" class="sr-only" />
+            <strong id="dropT">Tap to choose a PDF</strong>
+            <span id="dropS">or drag it here. Max 10 MB</span>
+          </label>
+          <label>Title<input id="upTitle" required minlength="3" maxlength="80"
+              placeholder="e.g. Vector chapter notes" /></label>
+          <button class="btn btn-ink" type="submit" id="upBtn">Upload</button>
         </form>
+        <div class="done" id="upDone" hidden>
+          <p class="done-ic" aria-hidden="true">&#10003;</p>
+          <h2 id="doneH">Thank you!</h2>
+          <p class="hint" id="doneT"></p>
+          <button class="btn btn-ink" type="button" id="againBtn">Add another PDF</button>
+        </div>
       </div>
 
-      <div class="panel" id="tab-notes" hidden><ul class="rows" id="noteList"></ul></div>
+      <div class="panel" id="tab-notes" hidden>
+        <ul class="rows" id="noteList"></ul>
+      </div>
+
+      <div class="panel" id="tab-folders" hidden>
+        <p class="hint">Uploads always go into an existing folder. Create a new one only when you really need it.</p>
+        <form id="folderForm" class="stack">
+          <label>New folder name<input id="fName" required minlength="2" maxlength="60" /></label>
+          <label>Show it under<select id="fGroup">
+              <option value="notes">Subject notes</option>
+              <option value="papers">Mid-exam papers</option>
+            </select></label>
+          <label>Existing Drive folder link (optional)<input id="fDrive"
+              placeholder="Leave empty to create a new Drive folder" /></label>
+          <button class="btn btn-ink" type="submit">Create folder</button>
+        </form>
+      </div>
 
       <div class="panel" id="tab-team" hidden>
         <form id="teamForm" class="inline">
           <input id="tEmail" type="email" placeholder="Email address" required aria-label="Email address" />
-          <select id="tRole" aria-label="Role"><option value="worker">Worker</option><option value="admin">Admin</option></select>
+          <select id="tRole" aria-label="Role">
+            <option value="worker">Worker</option>
+            <option value="admin">Admin</option>
+          </select>
           <button class="btn btn-ink" type="submit">Add</button>
         </form>
-        <p class="hint">Workers can upload (goes live at once) and delete. Admins can also approve or reject uploads.</p>
+        <p class="hint">Workers can upload (goes live at once) and delete. Admins can also approve uploads and create
+          folders.</p>
         <ul class="rows" id="teamList"></ul>
       </div>
     </section>
@@ -89,4 +137,5 @@
   <script src="config.js"></script>
   <script src="contribute.js"></script>
 </body>
+
 </html>

@@ -53,7 +53,7 @@
         sub.items.forEach((item) => {
           const li = el("li");
           const a = el("a", "file");
-          a.href = item.url; a.target = "_blank"; a.rel = "noopener";
+          a.href = item.url;
           a.innerHTML = ICON_FILE + '<span class="f-name"></span>';
           const nameEl = $(".f-name", a);
           if (item.unofficial) a.insertAdjacentHTML("beforeend", '<span class="badge">Non-official</span>');
@@ -72,8 +72,27 @@
     });
   }
 
-  build(NOTES, $("#notesGrid"), "notes");
-  build(PAPERS, $("#papersGrid"), "papers");
+  const grids = { notes: $("#notesGrid"), papers: $("#papersGrid") };
+  function mount(notes, papers) {
+    cards.length = 0; grids.notes.innerHTML = ""; grids.papers.innerHTML = "";
+    build(notes, grids.notes, "notes"); build(papers, grids.papers, "papers");
+  }
+  // Uploaded notes are merged into the existing subject cards (same id). Only a folder created on purpose becomes a new card.
+  function merged(data) {
+    const copy = (L) => L.map((s) => ({ ...s, items: s.items.slice() }));
+    const notes = copy(NOTES), papers = copy(PAPERS), all = notes.concat(papers);
+    (data.folders || []).forEach((f) => {
+      if (all.some((s) => s.id === f.id)) return;
+      const s = { id: f.id, title: f.name, items: [] };
+      (f.group === "papers" ? papers : notes).push(s); all.push(s);
+    });
+    (data.notes || []).forEach((n) => { const s = all.find((x) => x.id === n.folder); if (s) s.items.push({ title: n.title, url: n.url }); });
+    return { notes, papers };
+  }
+  let cache = null;
+  try { cache = JSON.parse(localStorage.getItem("ictFolders")); } catch (e) {}
+  const first = cache ? merged(cache) : { notes: NOTES, papers: PAPERS };
+  mount(first.notes, first.papers);
 
   const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
 
@@ -144,12 +163,13 @@
 
   render();
 
-  // Community notes approved by admins (served by the Apps Script backend)
   if (typeof APPS_SCRIPT_URL !== "undefined" && APPS_SCRIPT_URL) {
     fetch(APPS_SCRIPT_URL).then((r) => r.json()).then((j) => {
-      if (!j.ok || !j.notes.length) return;
-      const items = j.notes.map((n) => ({ title: n.title + " (" + n.subject + ", by " + n.by + ")", url: n.url, unofficial: true }));
-      build([{ id: "community", title: "Community notes", items }], $("#notesGrid"), "notes");
+      if (!j.ok) return;
+      try { localStorage.setItem("ictFolders", JSON.stringify(j)); } catch (e) {}
+      const open = cards.filter((c) => c.root.open).map((c) => c.root.id), m = merged(j);
+      mount(m.notes, m.papers);
+      cards.forEach((c) => { if (open.indexOf(c.root.id) >= 0) c.root.open = true; });
       render();
     }).catch(() => {});
   }
